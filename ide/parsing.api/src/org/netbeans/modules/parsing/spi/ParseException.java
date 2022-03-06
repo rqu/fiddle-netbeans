@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.netbeans.modules.parsing.spi;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 /**
  * Used when some error occures during parsing of source files.

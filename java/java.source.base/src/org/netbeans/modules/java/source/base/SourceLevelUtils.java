@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.netbeans.modules.java.source.base;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 import com.sun.tools.javac.code.Source;
 

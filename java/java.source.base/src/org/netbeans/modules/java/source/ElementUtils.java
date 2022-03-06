@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.netbeans.modules.java.source;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 import com.sun.source.util.JavacTask;
 import com.sun.tools.javac.api.JavacTaskImpl;
@@ -33,7 +33,6 @@ import java.util.Set;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.TypeElement;
-import org.netbeans.api.java.source.CompilationInfo;
 
 /** TODO
  *
@@ -42,7 +41,7 @@ import org.netbeans.api.java.source.CompilationInfo;
 public class ElementUtils {
 
     public static TypeElement getTypeElementByBinaryName(CompilationInfo info, String name) {
-        return getTypeElementByBinaryName(CompilationInfoAccessor.getInstance().getJavacTask(info), name);
+        return getTypeElementByBinaryName(info.impl.getJavacTask(), name);
     }
 
     public static TypeElement getTypeElementByBinaryName(JavacTask task, String name) {
@@ -89,7 +88,7 @@ public class ElementUtils {
     }
 
     public static TypeElement getTypeElementByBinaryName(CompilationInfo info, ModuleElement mod, String name) {
-        return getTypeElementByBinaryName(CompilationInfoAccessor.getInstance().getJavacTask(info), mod, name);
+        return getTypeElementByBinaryName(info.impl.getJavacTask(), mod, name);
     }
 
     public static TypeElement getTypeElementByBinaryName(JavacTask task, ModuleElement mod, String name) {

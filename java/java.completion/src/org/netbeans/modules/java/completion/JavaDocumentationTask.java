@@ -17,8 +17,10 @@
  * under the License.
  */
 
-package org.netbeans.modules.java.completion;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.CompilationController;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.JavaSource;
 import com.sun.source.tree.ModuleTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
@@ -30,10 +32,6 @@ import javax.lang.model.element.ElementKind;
 
 import org.netbeans.api.annotations.common.NonNull;
 import org.netbeans.api.annotations.common.NullAllowed;
-import org.netbeans.api.java.source.CompilationController;
-import org.netbeans.api.java.source.CompilationInfo;
-import org.netbeans.api.java.source.ElementHandle;
-import org.netbeans.api.java.source.JavaSource;
 
 /**
  *

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.netbeans.modules.java.source;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 import com.sun.tools.javac.code.Kinds;
 import com.sun.tools.javac.code.Scope;
@@ -48,7 +48,6 @@ import javax.tools.JavaFileObject;
 
 import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.util.JCDiagnostic.Error;
-import org.netbeans.modules.java.source.builder.ElementsService;
 
 /**
  *

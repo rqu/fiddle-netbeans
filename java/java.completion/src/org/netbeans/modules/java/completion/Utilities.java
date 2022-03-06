@@ -17,14 +17,9 @@
  * under the License.
  */
 
-package org.netbeans.modules.java.completion;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.prefs.PreferenceChangeEvent;
-import java.util.prefs.PreferenceChangeListener;
-import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
 
 import javax.lang.model.element.Element;
@@ -35,11 +30,7 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
-import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.netbeans.api.java.lexer.JavaTokenId;
-import org.netbeans.api.java.source.CodeStyle;
-import org.netbeans.api.java.source.CodeStyleUtils;
-import org.openide.util.WeakListeners;
 
 /**
  *
@@ -47,53 +38,16 @@ import org.openide.util.WeakListeners;
  */
 public final class Utilities {
 
-    private static final String EMPTY = ""; //NOI18N
     private static final String ERROR = "<error>"; //NOI18N
-    private static final String COMPLETION_CASE_SENSITIVE = "completion-case-sensitive"; // NOI18N
     private static final boolean COMPLETION_CASE_SENSITIVE_DEFAULT = true;
-    private static final String SHOW_DEPRECATED_MEMBERS = "show-deprecated-members"; // NOI18N
     private static final boolean SHOW_DEPRECATED_MEMBERS_DEFAULT = true;
-    private static final String JAVA_COMPLETION_WHITELIST = "javaCompletionWhitelist"; //NOI18N
-    private static final String JAVA_COMPLETION_BLACKLIST = "javaCompletionBlacklist"; //NOI18N
-    private static final String JAVA_COMPLETION_BLACKLIST_DEFAULT = ""; //NOI18N
-    private static final String JAVA_COMPLETION_EXCLUDER_METHODS = "javaCompletionExcluderMethods"; //NOI18N
     private static final boolean JAVA_COMPLETION_EXCLUDER_METHODS_DEFAULT = false;
-    private static final String JAVA_COMPLETION_SUBWORDS = "javaCompletionSubwords"; //NOI18N
     private static final boolean JAVA_COMPLETION_SUBWORDS_DEFAULT = false;
 
     private static boolean caseSensitive = COMPLETION_CASE_SENSITIVE_DEFAULT;
     private static boolean showDeprecatedMembers = SHOW_DEPRECATED_MEMBERS_DEFAULT;
     private static boolean javaCompletionExcluderMethods = JAVA_COMPLETION_EXCLUDER_METHODS_DEFAULT;
     private static boolean javaCompletionSubwords = JAVA_COMPLETION_SUBWORDS_DEFAULT;
-
-    private static final AtomicBoolean inited = new AtomicBoolean(false);
-    private static Preferences preferences;
-    private static final PreferenceChangeListener preferencesTracker = new PreferenceChangeListener() {
-        @Override
-        public void preferenceChange(PreferenceChangeEvent evt) {
-            String settingName = evt == null ? null : evt.getKey();
-            if (settingName == null || COMPLETION_CASE_SENSITIVE.equals(settingName)) {
-                caseSensitive = preferences.getBoolean(COMPLETION_CASE_SENSITIVE, COMPLETION_CASE_SENSITIVE_DEFAULT);
-            }
-            if (settingName == null || SHOW_DEPRECATED_MEMBERS.equals(settingName)) {
-                showDeprecatedMembers = preferences.getBoolean(SHOW_DEPRECATED_MEMBERS, SHOW_DEPRECATED_MEMBERS_DEFAULT);
-            }
-            if (settingName == null || JAVA_COMPLETION_BLACKLIST.equals(settingName)) {
-                String blacklist = preferences.get(JAVA_COMPLETION_BLACKLIST, EMPTY);
-                updateExcluder(excludeRef, blacklist);
-            }
-            if (settingName == null || JAVA_COMPLETION_WHITELIST.equals(settingName)) {
-                String whitelist = preferences.get(JAVA_COMPLETION_WHITELIST, EMPTY);
-                updateExcluder(includeRef, whitelist);
-            }
-            if (settingName == null || JAVA_COMPLETION_EXCLUDER_METHODS.equals(settingName)) {
-                javaCompletionExcluderMethods = preferences.getBoolean(JAVA_COMPLETION_EXCLUDER_METHODS, JAVA_COMPLETION_EXCLUDER_METHODS_DEFAULT);
-            }
-            if (settingName == null || JAVA_COMPLETION_SUBWORDS.equals(settingName)) {
-                javaCompletionSubwords = preferences.getBoolean(JAVA_COMPLETION_SUBWORDS, JAVA_COMPLETION_SUBWORDS_DEFAULT);
-            }
-        }
-    };
 
     private static String cachedPrefix = null;
     private static Pattern cachedCamelCasePattern = null;
@@ -194,36 +148,15 @@ public final class Utilities {
     }
 
     public static boolean isCaseSensitive() {
-        lazyInit();
         return caseSensitive;
     }
 
     public static boolean isSubwordSensitive() {
-        lazyInit();
         return javaCompletionSubwords;
     }
 
     public static boolean isShowDeprecatedMembers() {
-        lazyInit();
         return showDeprecatedMembers;
-    }
-
-    static private final AtomicReference<Collection<String>> excludeRef = new AtomicReference<>();
-    static private final AtomicReference<Collection<String>> includeRef = new AtomicReference<>();
-
-    private static void updateExcluder(AtomicReference<Collection<String>> existing, String updated) {
-        Collection<String> nue = new LinkedList<>();
-        if (updated == null || updated.length() == 0) {
-            existing.set(nue);
-            return;
-        }
-        String[] entries = updated.split(","); //NOI18N
-        for (String entry : entries) {
-            if (entry.length() != 0) {
-                nue.add(entry);
-            }
-        }
-        existing.set(nue);
     }
 
     /**
@@ -231,7 +164,6 @@ public final class Utilities {
      * methods
      */
     public static boolean isExcludeMethods() {
-        lazyInit();
         return javaCompletionExcluderMethods;
     }
 
@@ -244,47 +176,14 @@ public final class Utilities {
         if (fqn == null || fqn.length() == 0) {
             return true;
         }
-        lazyInit();
-        String s = fqn.toString();
-        Collection<String> include = includeRef.get();
-        Collection<String> exclude = excludeRef.get();
-
-        if (include != null && !include.isEmpty()) {
-            for (String entry : include) {
-                if (s.endsWith(".") && entry.startsWith(s)) {
-                    return false;
-                }
-                if ((entry.endsWith("*") && entry.length() - 1 <= s.length()
-                        && s.startsWith(entry.substring(0, entry.length() - 1)))
-                        || s.equals(entry)) {
-                    return false;
-                }
-            }
-        }
-
-        if (exclude != null && !exclude.isEmpty()) {
-            for (String entry : exclude) {
-                if ((entry.endsWith("*") && entry.length() - 1 <= s.length() //NOI18N
-                        && s.startsWith(entry.substring(0, entry.length() - 1)))
-                        || s.equals(entry)) {
-                        return true;
-                }
-            }
-        }
 
         return false;
     }
 
     public static void exclude(final CharSequence fqn) {
-        if (fqn != null && fqn.length() > 0) {
-            lazyInit();
-            String blacklist = preferences.get(JAVA_COMPLETION_BLACKLIST, JAVA_COMPLETION_BLACKLIST_DEFAULT);
-            blacklist += (blacklist.length() > 0 ? "," + fqn : fqn); //NOI18N
-            preferences.put(JAVA_COMPLETION_BLACKLIST, blacklist);
-        }
     }
 
-    public static List<String> varNamesSuggestions(TypeMirror type, ElementKind kind, Set<Modifier> modifiers, String suggestedName, String prefix, Types types, Elements elements, Iterable<? extends Element> locals, CodeStyle codeStyle) {
+    public static List<String> varNamesSuggestions(TypeMirror type, ElementKind kind, Set<Modifier> modifiers, String suggestedName, String prefix, Types types, Elements elements, Iterable<? extends Element> locals) {
         List<String> result = new ArrayList<>();
         if (type == null && suggestedName == null) {
             return result;
@@ -296,31 +195,15 @@ public final class Utilities {
         switch (kind) {
             case FIELD:
                 if (modifiers.contains(Modifier.STATIC)) {
-                    if (codeStyle != null) {
-                        namePrefix = codeStyle.getStaticFieldNamePrefix();
-                        nameSuffix = codeStyle.getStaticFieldNameSuffix();
-                    }
                     isConst = modifiers.contains(Modifier.FINAL);
                 } else {
-                    if (codeStyle != null) {
-                        namePrefix = codeStyle.getFieldNamePrefix();
-                        nameSuffix = codeStyle.getFieldNameSuffix();
-                    }
                 }
                 break;
             case LOCAL_VARIABLE:
             case EXCEPTION_PARAMETER:
             case RESOURCE_VARIABLE:
-                if (codeStyle != null) {
-                    namePrefix = codeStyle.getLocalVarNamePrefix();
-                    nameSuffix = codeStyle.getLocalVarNameSuffix();
-                }
                 break;
             case PARAMETER:
-                if (codeStyle != null) {
-                    namePrefix = codeStyle.getParameterNamePrefix();
-                    nameSuffix = codeStyle.getParameterNameSuffix();
-                }
                 break;
         }
         if (isConst) {
@@ -528,14 +411,17 @@ public final class Utilities {
         return false;
     }
 
-    private static void lazyInit() {
-        if (inited.compareAndSet(false, true)) {
-            preferences = MimeLookup.getLookup(JavaTokenId.language().mimeType()).lookup(Preferences.class);
-            preferences.addPreferenceChangeListener(WeakListeners.create(PreferenceChangeListener.class, preferencesTracker, preferences));
-            preferencesTracker.preferenceChange(null);
+    private Utilities() {
         }
+
+    public static CharSequence getTypeName(CompilationInfo info, TypeMirror type, boolean fqn) {
+        return getTypeName(info, type, fqn, false);
     }
 
-    private Utilities() {
+    public static CharSequence getTypeName(CompilationInfo info, TypeMirror type, boolean fqn, boolean varArg) {
+        Set<TypeUtilities.TypeNameOptions> options = EnumSet.noneOf(TypeUtilities.TypeNameOptions.class);
+        if (fqn) options.add(TypeUtilities.TypeNameOptions.PRINT_FQN);
+        if (varArg) options.add(TypeUtilities.TypeNameOptions.PRINT_AS_VARARG);
+        return info.getTypeUtilities().getTypeName(type, options.toArray(new TypeUtilities.TypeNameOptions[0]));
     }
 }

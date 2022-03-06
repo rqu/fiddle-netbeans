@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.netbeans.modules.java.source;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 import com.sun.source.doctree.ReferenceTree;
 import com.sun.source.tree.BreakTree;

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.netbeans.api.java.source;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Type;

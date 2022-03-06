@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.netbeans.api.java.source;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 import org.netbeans.api.annotations.common.NonNull;
 import org.netbeans.api.annotations.common.NullAllowed;
@@ -176,8 +176,8 @@ public final class CodeStyleUtils {
      * @return the getter name
      */
     @NonNull
-    public static String computeGetterName(CharSequence fieldName, boolean isBoolean, boolean isStatic, CodeStyle cs) {
-        StringBuilder sb = new StringBuilder(getCapitalizedName(removeFieldPrefixSuffix(fieldName, isStatic, cs)));
+    public static String computeGetterName(CharSequence fieldName, boolean isBoolean, boolean isStatic) {
+        StringBuilder sb = new StringBuilder(getCapitalizedName(removeFieldPrefixSuffix(fieldName, isStatic)));
         sb.insert(0, isBoolean ? "is" : "get"); //NOI18N
         String getterName = sb.toString();
         return getterName;
@@ -192,15 +192,13 @@ public final class CodeStyleUtils {
      * @return the setter name
      */
     @NonNull
-    public static String computeSetterName(CharSequence fieldName, boolean isStatic, CodeStyle cs) {
-        StringBuilder name = new StringBuilder(getCapitalizedName(removeFieldPrefixSuffix(fieldName, isStatic, cs)));
+    public static String computeSetterName(CharSequence fieldName, boolean isStatic) {
+        StringBuilder name = new StringBuilder(getCapitalizedName(removeFieldPrefixSuffix(fieldName, isStatic)));
         name.insert(0, "set"); //NOI18N
         return name.toString();
     }
     
-    private static String removeFieldPrefixSuffix(CharSequence fieldName, boolean isStatic, CodeStyle cs) {
-        return removePrefixSuffix(fieldName,
-                                  isStatic ? cs.getStaticFieldNamePrefix() : cs.getFieldNamePrefix(),
-                                  isStatic ? cs.getStaticFieldNameSuffix() : cs.getFieldNameSuffix());
+    private static String removeFieldPrefixSuffix(CharSequence fieldName, boolean isStatic) {
+        return removePrefixSuffix(fieldName, "", "");
     }
 }

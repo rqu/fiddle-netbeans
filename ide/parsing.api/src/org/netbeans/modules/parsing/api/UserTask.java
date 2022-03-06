@@ -17,7 +17,10 @@
  * under the License.
  */
 
-package org.netbeans.modules.parsing.api;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
+
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.Task;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.ResultIterator;
 
 
 /**

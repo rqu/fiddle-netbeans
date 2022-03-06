@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ $# != 1 ]
+then
+	echo "Usage: <B>/cpfrom <A>"
+	echo "Copies java files from A to B, following symlinks in both"
+	exit 1
+fi
+
+absfrom="`readlink -f "$1"`"
+
+cd "`dirname "$0"`"
+
+echo "From: $absfrom"
+echo "To: $PWD"
+echo "Enter || Ctrl-C"
+read
+
+for f in *.java
+do cat "$absfrom/$f" > "$f"
+done

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.netbeans.api.java.source.support;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 import com.sun.source.tree.ErroneousTree;
 import com.sun.source.util.TreePathScanner;

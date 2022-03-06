@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.netbeans.api.java.source;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
+import com.oracle.graalvm.fiddle.compiler.nbjavac.ClassIndex;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.Scope;
-import com.sun.source.util.DocTrees;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacScope;
@@ -32,7 +32,6 @@ import com.sun.tools.javac.code.Source;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.ClassSymbol;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
-import com.sun.tools.javac.code.Symbol.PackageSymbol;
 import com.sun.tools.javac.code.Symbol.TypeSymbol;
 import com.sun.tools.javac.code.Symbol.VarSymbol;
 import com.sun.tools.javac.code.Symtab;
@@ -81,13 +80,14 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.SimpleElementVisitor9;
 import javax.lang.model.util.Types;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nb.CodeStyleUtils;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nb.ElementsService;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nb.SourceLevelUtils;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nb.TreeShims;
 
 import org.netbeans.api.annotations.common.CheckForNull;
 import org.netbeans.api.annotations.common.NonNull;
 import org.netbeans.api.annotations.common.NullAllowed;
-import org.netbeans.modules.java.source.TreeShims;
-import org.netbeans.modules.java.source.builder.ElementsService;
-import org.netbeans.modules.java.source.base.SourceLevelUtils;
 import org.openide.util.Parameters;
 
 /**
@@ -726,10 +726,10 @@ public final class ElementUtilities {
      *
      * @since 0.136
      */
-    public boolean hasGetter(TypeElement type, VariableElement field, CodeStyle codeStyle) {
+    public boolean hasGetter(TypeElement type, VariableElement field) {
         boolean isBoolean = field.asType().getKind() == TypeKind.BOOLEAN;
         boolean isStatic = field.getModifiers().contains(Modifier.STATIC);
-        String name = CodeStyleUtils.computeGetterName(field.getSimpleName(), isBoolean, isStatic, codeStyle);
+        String name = CodeStyleUtils.computeGetterName(field.getSimpleName(), isBoolean, isStatic);
         return delegate.alreadyDefinedIn(name, field.asType(), com.sun.tools.javac.util.List.<TypeMirror>nil(), type);
     }
 
@@ -742,9 +742,9 @@ public final class ElementUtilities {
      *
      * @since 0.136
      */
-    public boolean hasSetter(TypeElement type, VariableElement field, CodeStyle codeStyle) {
+    public boolean hasSetter(TypeElement type, VariableElement field) {
         boolean isStatic = field.getModifiers().contains(Modifier.STATIC);
-        String name = CodeStyleUtils.computeSetterName(field.getSimpleName(), isStatic, codeStyle);
+        String name = CodeStyleUtils.computeSetterName(field.getSimpleName(), isStatic);
         return delegate.alreadyDefinedIn(name, info.getTypes().getNoType(TypeKind.VOID), com.sun.tools.javac.util.List.<TypeMirror>of(field.asType()), type);
     }
 

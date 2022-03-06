@@ -17,8 +17,13 @@
  * under the License.
  */
 
-package org.netbeans.modules.java.completion;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.CompilationController;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.JavaSource;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.ReferencesCount;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.Parser;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.ResultIterator;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -38,16 +43,10 @@ import com.sun.source.tree.*;
 import com.sun.source.tree.Tree.Kind;
 import com.sun.source.util.SourcePositions;
 import com.sun.source.util.TreePath;
-import org.netbeans.api.java.source.support.ErrorAwareTreeScanner;
 import javax.lang.model.element.Name;
 
 import org.netbeans.api.java.lexer.JavaTokenId;
-import org.netbeans.api.java.source.*;
-import org.netbeans.api.java.source.support.ReferencesCount;
 import org.netbeans.api.lexer.TokenSequence;
-import org.netbeans.modules.parsing.api.ResultIterator;
-import org.netbeans.modules.parsing.api.UserTask;
-import org.netbeans.modules.parsing.spi.Parser;
 
 /**
  *

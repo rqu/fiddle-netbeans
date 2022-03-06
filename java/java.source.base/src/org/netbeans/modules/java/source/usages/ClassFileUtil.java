@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.netbeans.modules.java.source.usages;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.ClassName;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.util.Convert;
 import com.sun.tools.javac.util.Name;
@@ -38,14 +39,6 @@ import javax.lang.model.type.IntersectionType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
-import org.netbeans.modules.classfile.ByteCodes;
-import org.netbeans.modules.classfile.CPClassInfo;
-import org.netbeans.modules.classfile.CPFieldInfo;
-import org.netbeans.modules.classfile.CPMethodInfo;
-import org.netbeans.modules.classfile.ClassName;
-import org.netbeans.modules.classfile.Code;
-import org.netbeans.modules.classfile.ConstantPool;
-import org.netbeans.modules.classfile.Method;
 
 /**
  *
@@ -58,80 +51,6 @@ public class ClassFileUtil {
     private ClassFileUtil() {
         throw new IllegalStateException("No instance allowed.");    //NOI18N
     }
-    
-    
-    public static boolean accessesFiledOrMethod (final String[] fieldInfo, final String[] methodInfo, final Code c, final ConstantPool cp) {                
-        BytecodeDecoder bd = new BytecodeDecoder (c.getByteCodes());
-        for (byte[] iw : bd) {
-            switch (((int)iw[0]&0xff)) {
-                case ByteCodes.bc_putstatic:
-                case ByteCodes.bc_getstatic:
-                case ByteCodes.bc_putfield:
-                case ByteCodes.bc_getfield:
-                    if (fieldInfo != null) {
-                        int cpIndex = BytecodeDecoder.toInt(iw[1],iw[2]);                        
-                        CPFieldInfo cpFieldInfo = (CPFieldInfo) cp.get(cpIndex);
-                        String className = cpFieldInfo.getClassName().getInternalName();
-                        String fieldName = cpFieldInfo.getFieldName();
-                        String signature = cpFieldInfo.getDescriptor();                           
-                        if (fieldInfo[0].equals(className) &&
-                            (fieldInfo[1] == null || (fieldInfo[1].equals(fieldName) && fieldInfo[2].equals(signature)))) {
-                            return true;
-                        }
-                    }
-                    break;
-                case ByteCodes.bc_invokevirtual:
-                case ByteCodes.bc_invokestatic:
-                case ByteCodes.bc_invokeinterface:                       
-                case ByteCodes.bc_invokespecial:
-                    if (methodInfo != null) {
-                        int cpIndex = BytecodeDecoder.toInt(iw[1],iw[2]);
-                        CPMethodInfo cpMethodInfo = (CPMethodInfo) cp.get(cpIndex);
-                        String className = cpMethodInfo.getClassName().getInternalName();
-                        String methodName = cpMethodInfo.getMethodName();
-                        String signature = cpMethodInfo.getDescriptor();                            
-                        if (methodInfo[0].equals(className) &&
-                            (methodInfo[1] == null || (methodInfo[1].equals(methodName) && methodInfo[2].equals(signature)))) {
-                            return true;
-                        }
-                    }
-                    break;
-            }                
-        }
-        return false;
-    }
-    
-    public static boolean accessesFiledOrMethod (final String[] fieldInfo, final String[] methodInfo, final Method m) {
-        Code c = m.getCode();
-        if (c != null) {
-            ConstantPool cp = m.getClassFile().getConstantPool();
-            return accessesFiledOrMethod(fieldInfo,methodInfo, c, cp);
-        }
-        else {
-            return false;
-        }
-    }
-    
-    public static <T extends Method> Collection<T> accessesFiled (final String[] fieldInfo, final Collection<T> methods) {
-        Collection<T> result = new LinkedList<T> ();
-        for (T m : methods) {
-            if (accessesFiledOrMethod(fieldInfo,null,m)) {
-                result.add(m);
-            }
-        }
-        return result;
-    }
-    
-    public static <T extends Method> Collection<T> callsMethod (final String[] methodInfo, final Collection<T> methods) {
-        Collection<T> result = new LinkedList<T> ();
-        for (T m : methods) {
-            if (accessesFiledOrMethod(null,methodInfo,m)) {                
-                result.add(m);
-            }
-        }
-        return result;
-    }        
-    
     
     public static String[] createFieldDescriptor (final VariableElement ve) {
 	assert ve != null;
@@ -312,37 +231,6 @@ public class ClassFileUtil {
             }
         }
         sb.append(nameChars,0,charLength);
-    }
-    
-    /**
-     * Returns ClassName for jvmType which represents a classref
-     * otherwise it returns null;
-     */
-    public static ClassName getType (final String jvmTypeId) {
-        //Both L... (classref) and [L... (array of classref) are important 
-        if (jvmTypeId.length()<2) {
-            return null; // no classref - simple types
-        }
-        else if (jvmTypeId.charAt(0) == 'L') {
-            //classref
-            return ClassName.getClassName(jvmTypeId);
-        }
-        else if (jvmTypeId.charAt(0) == '[') {
-            //Array of classref
-            return getType (jvmTypeId.substring(1));
-        }
-        //No classref - array of simple types
-        return null;
-    }
-    
-    public static ClassName getType (final CPClassInfo ci) {
-        String type = ci.getName();
-        if (type.charAt(0)=='[') {  //NOI18N
-            return getType(type);
-        }
-        else {
-            return ci.getClassName();
-        }
     }
     
     public static ClassName[] getTypesFromMethodTypeSignature (final String jvmTypeId) {

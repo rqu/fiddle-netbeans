@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.netbeans.api.java.source;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -34,18 +34,14 @@ import com.sun.source.util.DocTreePath;
 import com.sun.source.util.DocTreePathScanner;
 import com.sun.source.util.SourcePositions;
 import com.sun.source.util.TreePath;
-import org.netbeans.api.java.source.support.ErrorAwareTreePathScanner;
-import org.netbeans.api.java.source.support.ErrorAwareTreeScanner;
 import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacScope;
-import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.comp.AttrContext;
 import com.sun.tools.javac.comp.Enter;
 import com.sun.tools.javac.comp.Env;
-import com.sun.tools.javac.comp.Resolve;
 import com.sun.tools.javac.tree.DCTree.DCReference;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
@@ -54,8 +50,6 @@ import com.sun.tools.javac.util.Context;
 
 import java.util.*;
 import java.util.function.Function;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.*;
@@ -72,48 +66,27 @@ import javax.tools.SimpleJavaFileObject;
 
 import com.sun.source.util.DocTrees;
 import com.sun.tools.javac.api.JavacTaskImpl;
-import com.sun.tools.javac.code.Kinds;
-import com.sun.tools.javac.comp.ArgumentAttr;
 import com.sun.tools.javac.comp.Attr;
-import com.sun.tools.javac.comp.Check.CheckContext;
-import com.sun.tools.javac.comp.DeferredAttr;
-import com.sun.tools.javac.comp.InferenceContext;
 import com.sun.tools.javac.main.JavaCompiler;
 import com.sun.tools.javac.parser.JavacParser;
 import com.sun.tools.javac.parser.Parser;
 import com.sun.tools.javac.parser.ParserFactory;
-import com.sun.tools.javac.parser.ScannerFactory;
-import com.sun.tools.javac.tree.JCTree.JCBlock;
 import com.sun.tools.javac.tree.JCTree.JCClassDecl;
 import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
-import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 import com.sun.tools.javac.util.JCDiagnostic;
 import com.sun.tools.javac.util.Log;
-import com.sun.tools.javac.util.Names;
-import com.sun.tools.javac.util.Warner;
 import java.lang.reflect.Method;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nb.ErrorAwareTreePathScanner;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nb.TreeShims;
 import org.netbeans.api.annotations.common.CheckForNull;
 import org.netbeans.api.annotations.common.NonNull;
-import org.netbeans.api.annotations.common.NullAllowed;
 import org.netbeans.api.java.lexer.JavaTokenId;
 import org.netbeans.api.java.lexer.JavadocTokenId;
-import org.netbeans.api.java.source.JavaSource.Phase;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.JavaSource.Phase;
 import org.netbeans.api.lexer.TokenSequence;
-import org.netbeans.lib.nbjavac.services.CancelService;
 import org.netbeans.lib.nbjavac.services.NBAttr;
-import org.netbeans.lib.nbjavac.services.NBParserFactory;
 import org.netbeans.lib.nbjavac.services.NBResolve;
-import org.netbeans.modules.java.source.TreeShims;
-import org.netbeans.modules.java.source.TreeUtilitiesAccessor;
-import org.netbeans.modules.java.source.builder.CommentHandlerService;
-import org.netbeans.modules.java.source.builder.CommentSetImpl;
-import org.netbeans.modules.java.source.matching.CopyFinder;
-import org.netbeans.modules.java.source.matching.CopyFinder.HackScope;
-import org.netbeans.modules.java.source.pretty.ImportAnalysis2;
-import org.netbeans.modules.java.source.transform.ImmutableDocTreeTranslator;
-import org.netbeans.modules.java.source.transform.ImmutableTreeTranslator;
-import org.openide.util.Exceptions;
 
 /**
  *
@@ -135,13 +108,11 @@ public final class TreeUtilities {
         }
     }
     private final CompilationInfo info;
-    private final CommentHandlerService handler;
     
     /** Creates a new instance of CommentUtilities */
     TreeUtilities(final CompilationInfo info) {
         assert info != null;
         this.info = info;
-        this.handler = CommentHandlerService.instance(info.impl.getJavacTask().getContext());
     }
     
     /**Checks whether the given tree represents a class.
@@ -300,50 +271,6 @@ public final class TreeUtilities {
         return null;        
     }        
     
-    /**Returns list of comments attached to a given tree. Can return either
-     * preceding or trailing comments.
-     *
-     * @param tree for which comments should be returned
-     * @param preceding true if preceding comments should be returned, false if trailing comments should be returned.
-     * @return list of preceding/trailing comments attached to the given tree
-     */
-    public List<Comment> getComments(Tree tree, boolean preceding) {
-        CommentSetImpl set = handler.getComments(tree);
-
-        ensureCommentsMapped(info, tree, set);
-
-        List<Comment> comments = preceding ? set.getPrecedingComments() : set.getTrailingComments();
-        
-        return Collections.unmodifiableList(comments);
-    }
-
-    static void ensureCommentsMapped(CompilationInfo info, @NullAllowed Tree tree, CommentSetImpl set) {
-        if (!set.areCommentsMapped() && tree != null) {
-            boolean assertsEnabled = false;
-            boolean automap = true;
-
-            assert assertsEnabled = true;
-
-            TreePath tp = info.getCompilationUnit() == tree ? new TreePath(info.getCompilationUnit()) : TreePath.getPath(info.getCompilationUnit(), tree);
-
-            if (tp == null) {
-                if (assertsEnabled && !info.getTreeUtilities().isSynthetic(info.getCompilationUnit(), tree)) {
-                    // HACK: if info is a working copy, the tree might be introduced by rewriting; 
-                    // in that case, no log should be printed
-                    if (!(info instanceof WorkingCopy) || !((WorkingCopy)info).validateIsReplacement(tree)) {
-                        Logger.getLogger(TreeUtilities.class.getName()).log(assertsEnabled ? Level.WARNING : Level.FINE, "Comment automap requested for Tree not from the root compilation info. Please, make sure to call GeneratorUtilities.importComments before Treeutilities.getComments. Tree: {0}", tree);
-                        Logger.getLogger(TreeUtilities.class.getName()).log(assertsEnabled ? Level.INFO : Level.FINE, "Caller", new Exception());
-                    }
-                }
-                automap = false;
-            }
-
-            if (automap) {
-                GeneratorUtilities.importComments(info, tree, info.getCompilationUnit());
-            }
-        }
-    }
-
     public TreePath pathFor(int pos) {
         return pathFor(new TreePath(info.getCompilationUnit()), pos);
     }
@@ -827,10 +754,6 @@ public final class TreeUtilities {
             scope = ((NBScope) scope).delegate;
         }
         
-        if (scope instanceof HackScope) {
-            return ((HackScope) scope).getEnv();
-        }
-
         return ((JavacScope) scope).getEnv();
     }
     
@@ -1618,145 +1541,6 @@ public final class TreeUtilities {
         ESCAPE_ENCODE = Collections.unmodifiableMap(encode);
     }
 
-    /**Returns new tree based on {@code original}, such that each visited subtree
-     * that occurs as a key in {@code original2Translated} is replaced by the corresponding
-     * value from {@code original2Translated}. The value is then translated using the same
-     * algorithm. Each key from {@code original2Translated} is used at most once.
-     * Unless the provided {@code original} tree is a key in {@code original2Translated},
-     * the resulting tree has the same type as {@code original}.
-     *
-     * Principally, the method inner workings are:
-     * <pre>
-     * translate(original, original2Translated) {
-     *      if (original2Translated.containsKey(original))
-     *          return translate(original2Translated.remove(original));
-     *      newTree = copyOf(original);
-     *      for (Tree child : allChildrenOf(original)) {
-     *          newTree.replace(child, translate(child, original2Translated));
-     *      }
-     *      return newTree;
-     * }
-     * </pre>
-     * 
-     * @param original the tree that should be translated
-     * @param original2Translated map containing trees that should be translated
-     * @return translated tree.
-     * @since 0.64
-     */
-    public @NonNull Tree translate(final @NonNull Tree original, final @NonNull Map<? extends Tree, ? extends Tree> original2Translated) {
-        return translate(original, original2Translated, new NoImports(info), null);
-    }
-    
-    @NonNull Tree translate(final @NonNull Tree original, final @NonNull Map<? extends Tree, ? extends Tree> original2Translated, ImportAnalysis2 ia, Map<Tree, Object> tree2Tag) {
-        ImmutableTreeTranslator itt = new ImmutableTreeTranslator(info instanceof WorkingCopy ? (WorkingCopy)info : null) {
-            private @NonNull Map<Tree, Tree> map = new HashMap<Tree, Tree>(original2Translated);
-            @Override
-            public Tree translate(Tree tree) {
-                Tree translated = map.remove(tree);
-
-                if (translated != null) {
-                    return translate(translated);
-                } else {
-                    return super.translate(tree);
-                }
-            }
-        };
-
-        Context c = info.impl.getJavacTask().getContext();
-
-        itt.attach(c, ia, tree2Tag);
-
-        return itt.translate(original);
-    }
-    
-    /**Returns new tree based on {@code original}, such that each visited subtree
-     * that occurs as a key in {@code original2Translated} is replaced by the corresponding
-     * value from {@code original2Translated}. The value is then translated using the same
-     * algorithm. Each key from {@code original2Translated} is used at most once.
-     * Unless the provided {@code original} tree is a key in {@code original2Translated},
-     * the resulting tree has the same type as {@code original}.
-     *
-     * Principally, the method inner workings are:
-     * <pre>
-     * translate(original, original2Translated) {
-     *      if (original2Translated.containsKey(original))
-     *          return translate(original2Translated.remove(original));
-     *      newTree = copyOf(original);
-     *      for (Tree child : allChildrenOf(original)) {
-     *          newTree.replace(child, translate(child, original2Translated));
-     *      }
-     *      return newTree;
-     * }
-     * </pre>
-     * 
-     * @param original the tree that should be translated
-     * @param original2Translated map containing trees that should be translated
-     * @return translated tree.
-     * @since 0.124
-     */
-    public @NonNull DocTree translate(final @NonNull DocTree original, final @NonNull Map<? extends DocTree, ? extends DocTree> original2Translated) {
-        return translate(original, original2Translated, new NoImports(info), null);
-    }
-    
-    @NonNull DocTree translate(final @NonNull DocTree original, final @NonNull Map<? extends DocTree, ? extends DocTree> original2Translated, ImportAnalysis2 ia, Map<Tree, Object> tree2Tag) {
-        ImmutableDocTreeTranslator itt = new ImmutableDocTreeTranslator(info instanceof WorkingCopy ? (WorkingCopy)info : null) {
-            private @NonNull Map<DocTree, DocTree> map = new HashMap<DocTree, DocTree>(original2Translated);
-            @Override
-            public DocTree translate(DocTree tree) {
-                DocTree translated = map.remove(tree);
-
-                if (translated != null) {
-                    return translate(translated);
-                } else {
-                    return super.translate(tree);
-                }
-            }
-        };
-
-        Context c = info.impl.getJavacTask().getContext();
-
-        itt.attach(c, ia, tree2Tag);
-
-        return itt.translate(original);
-    }
-
-    private static final class NoImports extends ImportAnalysis2 {
-
-        public NoImports(CompilationInfo info) {
-            super(info);
-        }
-
-        @Override
-        public void classEntered(ClassTree clazz) {}
-
-        @Override
-        public void enterVisibleThroughClasses(ClassTree clazz) {}
-
-        @Override
-        public void classLeft() {}
-
-        @Override
-        public ExpressionTree resolveImport(MemberSelectTree orig, Element element) {
-            return orig;
-        }
-
-        @Override
-        public void setCompilationUnit(CompilationUnitTree cut) {}
-
-        @Override
-        public void setImports(List<? extends ImportTree> importsToAdd) {
-        }
-
-        @Override
-        public Set<? extends Element> getImports() {
-            return Collections.emptySet();
-        }
-
-        @Override
-        public void setPackage(ExpressionTree packageNameTree) {}
-
-    }
-    
     private static class UncaughtExceptionsVisitor extends ErrorAwareTreePathScanner<Void, Set<TypeMirror>> {
         
         private final CompilationInfo info;
@@ -2028,35 +1812,6 @@ public final class TreeUtilities {
         return false;
     }
 
-    /**
-     * Check the tree has compile error in given errors.
-     *
-     * @param tree compilation tree
-     * @param errors Array of error code
-     * @return true if tree has compile error present in list of errors.
-     * @since 2.37
-     */
-    public boolean hasError(@NonNull Tree tree, String... errors) {
-        long startPos = info.getTrees().getSourcePositions().getStartPosition(info.getCompilationUnit(), tree);
-        long endPos = info.getTrees().getSourcePositions().getEndPosition(info.getCompilationUnit(), tree);
-
-        List<Diagnostic> diagnosticsList = info.getDiagnostics();
-        for (Diagnostic d : diagnosticsList) {
-            if ((d.getKind() == Diagnostic.Kind.ERROR) && ((d.getStartPosition() >= startPos) && (d.getEndPosition() <= endPos))) {
-                if (errors == null || errors.length == 0) {
-                    return true;
-                } else {
-                    for (String error : errors) {
-                        if (error.equals(d.getCode())) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
     private static final class NBScope implements Scope {
 
         private final JavacScope delegate;
@@ -2089,14 +1844,5 @@ public final class TreeUtilities {
         public Iterable<? extends Element> getLocalElements() {
             return delegate.getLocalElements();
         }
-    }
-
-    static {
-        TreeUtilitiesAccessor.setInstance(new TreeUtilitiesAccessor() {
-            @Override
-            public StatementTree parseStatement(JavacTaskImpl task, String stmt, SourcePositions[] sourcePositions) {
-                return parseStatementImpl(task, stmt, sourcePositions);
-            }
-        });
     }
 }

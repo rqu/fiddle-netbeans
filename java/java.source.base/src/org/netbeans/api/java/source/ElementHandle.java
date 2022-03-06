@@ -17,17 +17,15 @@
  * under the License.
  */
 
-package org.netbeans.api.java.source;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
 import com.sun.tools.javac.api.JavacTaskImpl;
 import com.sun.tools.javac.code.ModuleFinder;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.jvm.Target;
-import com.sun.tools.javac.model.JavacElements;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.util.Name;
-import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.logging.Level;
@@ -39,15 +37,11 @@ import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeKind;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nb.ElementUtils;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nb.TreeShims;
 
 import org.netbeans.api.annotations.common.CheckForNull;
 import org.netbeans.api.annotations.common.NonNull;
-import org.netbeans.modules.java.source.ElementHandleAccessor;
-import org.netbeans.modules.java.source.ElementUtils;
-import org.netbeans.modules.java.source.TreeShims;
-import org.netbeans.modules.java.source.usages.ClassFileUtil;
 import org.openide.util.Parameters;
 import org.openide.util.WeakSet;
 
@@ -89,9 +83,6 @@ import org.openide.util.WeakSet;
  */
 public final class ElementHandle<T extends Element> {
     private static final Logger log = Logger.getLogger(ElementHandle.class.getName());
-    static {
-        ElementHandleAccessor.setInstance(new ElementHandleAccessorImpl ());
-    }
     
     private final ElementKind kind;
     private final String[] signatures;
@@ -294,60 +285,6 @@ public final class ElementHandle<T extends Element> {
         return null;
     }
     
-    
-    /**
-     * Tests if the handle has the same signature as the parameter.
-     * The handles with the same signatures are resolved into the same
-     * element in the same {@link javax.tools.JavaCompiler} task, but may be resolved into
-     * the different {@link Element}s in the different {@link javax.tools.JavaCompiler} tasks.
-     * @param handle to be checked
-     * @return true if the handles resolve into the same {@link Element}s
-     * in the same {@link javax.tools.JavaCompiler} task.
-     */
-    public boolean signatureEquals (@NonNull final ElementHandle<? extends Element> handle) {
-         if (!isSameKind (this.kind, handle.kind) || this.signatures.length != handle.signatures.length) {
-             return false;
-         }
-         for (int i=0; i<signatures.length; i++) {
-             if (!signatures[i].equals(handle.signatures[i])) {
-                 return false;
-             }
-         }
-         return true;
-    }
-    
-    
-    private static boolean isSameKind (ElementKind k1, ElementKind k2) {
-        if ((k1 == k2) ||
-           (k1 == ElementKind.OTHER && (k2.isClass() || k2.isInterface())) ||     
-           (k2 == ElementKind.OTHER && (k1.isClass() || k1.isInterface()))) {
-            return true;
-        }
-        return false;
-    }
-    
-    
-    /**
-     * Returns a binary name of the {@link TypeElement} represented by this
-     * {@link ElementHandle}. When the {@link ElementHandle} doesn't represent
-     * a {@link TypeElement} it throws a {@link IllegalStateException}
-     * @return the qualified name
-     * @throws an {@link IllegalStateException} when this {@link ElementHandle} 
-     * isn't created for the {@link TypeElement}.
-     */
-    public @NonNull String getBinaryName () throws IllegalStateException {
-        if ((this.kind.isClass() && !isArray(signatures[0])) ||
-                this.kind.isInterface() ||
-                this.kind == ElementKind.MODULE ||
-                this.kind == ElementKind.OTHER) {
-            return this.signatures[0];
-        }
-        else {
-            throw new IllegalStateException ();
-        }
-    }
-    
-    
     /**
      * Returns a qualified name of the {@link TypeElement} represented by this
      * {@link ElementHandle}. When the {@link ElementHandle} doesn't represent
@@ -366,26 +303,6 @@ public final class ElementHandle<T extends Element> {
         else {
             throw new IllegalStateException ();
         }
-    }
-    
-    
-    /**
-     * Tests if the handle has this same signature as the parameter.
-     * The handles has the same signatures if it is resolved into the same
-     * element in the same {@link javax.tools.JavaCompiler} task, but may be resolved into
-     * the different {@link Element} in the different {@link javax.tools.JavaCompiler} task.
-     * @param element to be checked
-     * @return true if this handle resolves into the same {@link Element}
-     * in the same {@link javax.tools.JavaCompiler} task.
-     */
-    public boolean signatureEquals (@NonNull final T element) {
-        final ElementKind ek = element.getKind();
-        final ElementKind thisKind = getKind();
-        if ((ek != thisKind) && !(thisKind == ElementKind.OTHER && (ek.isClass() || ek.isInterface()))) {
-            return false;
-        }
-        final ElementHandle<T> handle = create (element);
-        return signatureEquals (handle);
     }
     
     /**
@@ -418,54 +335,6 @@ public final class ElementHandle<T extends Element> {
         return (ElementHandle<T>) NORMALIZATION_CACHE.putIfAbsent(eh);
     }
     
-    /**
-     * Creates an {@link ElementHandle} representing a {@link PackageElement}.
-     * @param packageName the name of the package
-     * @return the created {@link ElementHandle}
-     * @since 0.98
-     */
-    @NonNull
-    public static ElementHandle<PackageElement> createPackageElementHandle (
-        @NonNull final String packageName) {
-        Parameters.notNull("packageName", packageName); //NOI18N
-        return new ElementHandle<PackageElement>(ElementKind.PACKAGE, packageName);
-    }
-    
-    /**
-     * Creates an {@link ElementHandle} representing a {@link TypeElement}.
-     * @param kind the {@link ElementKind} of the {@link TypeElement},
-     * allowed values are {@link ElementKind#CLASS}, {@link ElementKind#INTERFACE},
-     * {@link ElementKind#ENUM} and {@link ElementKind#ANNOTATION_TYPE}.
-     * @param binaryName the class binary name as specified by JLS §13.1
-     * @return the created {@link ElementHandle}
-     * @throws IllegalArgumentException if kind is neither class nor interface
-     * @since 0.98
-     */
-    @NonNull
-    public static ElementHandle<TypeElement> createTypeElementHandle(
-        @NonNull final ElementKind kind,
-        @NonNull final String binaryName) throws IllegalArgumentException {
-        Parameters.notNull("kind", kind);   //NOI18N
-        Parameters.notNull("binaryName", binaryName);   //NOI18N
-        if (!kind.isClass() && !kind.isInterface()) {
-            throw new IllegalArgumentException(kind.toString());
-        }
-        return new ElementHandle<TypeElement>(kind, binaryName);
-    }
-
-    /**
-     * Creates an {@link ElementHandle} representing a {@link ModuleElement}.
-     * @param moduleName the name of the module
-     * @return the created {@link ElementHandle}
-     * @since 2.26
-     */
-    @NonNull
-    public static ElementHandle<ModuleElement> createModuleElementHandle(
-            @NonNull final String moduleName) {
-        Parameters.notNull("moduleName", moduleName); //NOI18N
-        return new ElementHandle<>(ElementKind.MODULE, moduleName);
-    }
-
     private static @NonNull <T extends Element> ElementHandle<T> createImpl (@NonNull final T element) throws IllegalArgumentException {
         Parameters.notNull("element", element);
         ElementKind kind = element.getKind();
@@ -530,130 +399,6 @@ public final class ElementHandle<T extends Element> {
                 throw new IllegalArgumentException(kind.toString());
         }
         return new ElementHandle<T> (kind, signatures);
-    }
-    
-    /**
-     * Gets {@link ElementHandle} from {@link TypeMirrorHandle} representing {@link DeclaredType}.
-     * @param typeMirrorHandle from which the {@link ElementHandle} should be retrieved. Permitted
-     * {@link TypeKind} is {@link TypeKind#DECLARED}.
-     * @return an {@link ElementHandle}
-     * @since 0.29.0
-     */
-    public static @NonNull ElementHandle<? extends TypeElement> from (@NonNull final TypeMirrorHandle<? extends DeclaredType> typeMirrorHandle) {
-        Parameters.notNull("typeMirrorHandle", typeMirrorHandle);
-        if (typeMirrorHandle.getKind() != TypeKind.DECLARED) {
-            throw new IllegalStateException("Incorrect kind: " + typeMirrorHandle.getKind());
-        }
-        return (ElementHandle<TypeElement>)typeMirrorHandle.getElementHandle();
-    }
-    
-    public @Override String toString () {
-        final StringBuilder result = new StringBuilder ();
-        result.append (this.getClass().getSimpleName());
-        result.append ('[');                                // NOI18N
-        result.append ("kind=").append (this.kind.toString());      // NOI18N
-        result.append ("; sigs=");                          // NOI18N
-        for (String sig : this.signatures) {
-            result.append (sig);
-            result.append (' ');                            // NOI18N
-        }
-        result.append (']');                                // NOI18N
-        return result.toString();
-    }
-    
-    
-    /**@inheritDoc*/
-    @Override
-    public int hashCode () {
-        int hashCode = 0;
-        
-        for (String sig : signatures) {
-            hashCode = hashCode ^ (sig != null ? sig.hashCode() : 0);
-        }
-        
-        return hashCode;
-    }
-    
-    /**@inheritDoc*/
-    @Override
-    public boolean equals (Object other) {
-        if (other instanceof ElementHandle) {
-            return signatureEquals((ElementHandle)other);
-        }
-        return false;
-    }
-    
-    
-    /**
-     * Returns the element signature.
-     * Package private, used by ClassIndex.
-     */
-    String[] getSignature () {
-        return this.signatures;
-    }
-        
-    
-    private static class ElementHandleAccessorImpl extends ElementHandleAccessor {
-        
-        @Override
-        public ElementHandle create(ElementKind kind, String... descriptors) {
-            assert kind != null;
-            assert descriptors != null;
-            switch (kind) {
-                case PACKAGE:
-                    if (descriptors.length != 1) {
-                        throw new IllegalArgumentException ();
-                    }
-                    return new ElementHandle<PackageElement> (kind, descriptors);
-                case MODULE:
-                case CLASS:
-                case INTERFACE:
-                case ENUM:
-                case ANNOTATION_TYPE:
-                case OTHER:
-                    if (descriptors.length != 1) {
-                        throw new IllegalArgumentException ();
-                    }
-                    return new ElementHandle<TypeElement> (kind, descriptors);
-                case METHOD:
-                case CONSTRUCTOR:                
-                    if (descriptors.length != 3) {
-                        throw new IllegalArgumentException ();
-                    }
-                    return new ElementHandle<ExecutableElement> (kind, descriptors);
-                case INSTANCE_INIT:
-                case STATIC_INIT:
-                    if (descriptors.length != 2) {
-                        throw new IllegalArgumentException ();
-                    }
-                    return new ElementHandle<ExecutableElement> (kind, descriptors);
-                case FIELD:
-                case ENUM_CONSTANT:
-                    if (descriptors.length != 3) {
-                        throw new IllegalArgumentException ();
-                    }
-                    return new ElementHandle<VariableElement> (kind, descriptors);
-                default:
-                    if (kind.name().equals(TreeShims.RECORD) && (descriptors.length == 1)) {
-                        return new ElementHandle<TypeElement>(kind, descriptors);
-                    } else {
-                        throw new IllegalArgumentException();
-                    }
-                    
-            }            
-        }
-
-        @Override
-        public <T extends Element> T resolve(ElementHandle<T> handle, JavacTaskImpl jti) {
-            return handle.resolveImpl (null, jti);
-        }
-
-        @Override
-        @NonNull
-        public String[] getJVMSignature(@NonNull final ElementHandle<?> handle) {
-            return Arrays.copyOf(handle.signatures, handle.signatures.length);
-        }
-
     }
     
     private static Element getTypeElementByBinaryName (final ModuleElement module, final String signature, final JavacTaskImpl jt) {

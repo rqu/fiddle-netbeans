@@ -17,8 +17,13 @@
  * under the License.
  */
 
-package org.netbeans.modules.java.completion;
+package com.oracle.graalvm.fiddle.compiler.nbjavac.nb;
 
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.CompilationController;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.JavaSource;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.ClassIndex;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.Source;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.ReferencesCount;
 import com.sun.source.tree.*;
 import com.sun.source.tree.Tree.Kind;
 import com.sun.source.util.*;
@@ -26,8 +31,6 @@ import com.sun.source.util.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.logging.Logger;
-import java.util.logging.Level;
 
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.*;
@@ -42,15 +45,10 @@ import javax.tools.Diagnostic;
 import org.netbeans.api.annotations.common.NonNull;
 import org.netbeans.api.annotations.common.NullAllowed;
 import org.netbeans.api.java.lexer.JavaTokenId;
-import org.netbeans.api.java.source.*;
-import org.netbeans.api.java.source.JavaSource.Phase;
-import org.netbeans.api.java.source.ClassIndex;
-import org.netbeans.api.java.source.ClassIndex.Symbols;
-import org.netbeans.api.java.source.support.ErrorAwareTreePathScanner;
-import org.netbeans.api.java.source.support.ReferencesCount;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.ClassIndex.Symbols;
+import com.oracle.graalvm.fiddle.compiler.nbjavac.nbstubs.JavaSource.Phase;
 import org.netbeans.api.lexer.TokenSequence;
 import org.netbeans.api.lexer.TokenUtilities;
-import org.netbeans.modules.parsing.api.Source;
 import org.openide.util.Pair;
 
 /**
@@ -312,7 +310,7 @@ public final class JavaCompletionTask<T> extends BaseTask {
     }
 
     @Override
-    protected void resolve(CompilationController controller) throws IOException {
+    public void resolve(CompilationController controller) throws IOException {
         Env env = getCompletionEnvironment(controller, true);
         if (env == null) {
             return;
@@ -2875,7 +2873,7 @@ public final class JavaCompletionTask<T> extends BaseTask {
                             && !illegalForwardRefs.containsKey(e.getSimpleName());
                 }
             };
-            for (String name : Utilities.varNamesSuggestions(tm, varKind, varMods, null, prefix, controller.getTypes(), controller.getElements(), controller.getElementUtilities().getLocalMembersAndVars(scope, acceptor), CodeStyle.getDefault(controller.getDocument()))) {
+            for (String name : Utilities.varNamesSuggestions(tm, varKind, varMods, null, prefix, controller.getTypes(), controller.getElements(), controller.getElementUtilities().getLocalMembersAndVars(scope, acceptor))) {
                 results.add(itemFactory.createVariableItem(env.getController(), name, anchorOffset, true, false));
             }
             return;
@@ -2912,7 +2910,7 @@ public final class JavaCompletionTask<T> extends BaseTask {
                             }
                         };
                         for (String name : Utilities.varNamesSuggestions(tm, varKind, varMods, null, prefix, controller.getTypes(), controller.getElements(),
-                                controller.getElementUtilities().getLocalMembersAndVars(scope, acceptor), CodeStyle.getDefault(controller.getDocument()))) {
+                                controller.getElementUtilities().getLocalMembersAndVars(scope, acceptor))) {
                             results.add(itemFactory.createVariableItem(env.getController(), name, anchorOffset, true, false));
                         }
                     }
@@ -2944,7 +2942,7 @@ public final class JavaCompletionTask<T> extends BaseTask {
                             }
                         };
                         for (String name : Utilities.varNamesSuggestions(controller.getTypes().getDeclaredType(te), varKind, varMods, null, prefix, controller.getTypes(),
-                                controller.getElements(), controller.getElementUtilities().getLocalMembersAndVars(scope, acceptor), CodeStyle.getDefault(controller.getDocument()))) {
+                                controller.getElements(), controller.getElementUtilities().getLocalMembersAndVars(scope, acceptor))) {
                             results.add(itemFactory.createVariableItem(env.getController(), name, anchorOffset, true, false));
                         }
                     }
@@ -3053,7 +3051,7 @@ public final class JavaCompletionTask<T> extends BaseTask {
                                 && !illegalForwardRefs.containsKey(e.getSimpleName());
                     }
                 };
-                for (String name : Utilities.varNamesSuggestions(tm, varKind, varMods, null, prefix, controller.getTypes(), controller.getElements(), controller.getElementUtilities().getLocalMembersAndVars(scope, acceptor), CodeStyle.getDefault(controller.getDocument()))) {
+                for (String name : Utilities.varNamesSuggestions(tm, varKind, varMods, null, prefix, controller.getTypes(), controller.getElements(), controller.getElementUtilities().getLocalMembersAndVars(scope, acceptor))) {
                     results.add(itemFactory.createVariableItem(env.getController(), name, anchorOffset, true, false));
                 }
                 break;
@@ -4381,10 +4379,6 @@ public final class JavaCompletionTask<T> extends BaseTask {
                             }
                         }
                     } else {
-                        Logger.getLogger("global").log(Level.FINE, String.format("Cannot resolve: %s on bootpath: %s classpath: %s sourcepath: %s\n", eh.toString(),
-                                controller.getClasspathInfo().getClassPath(ClasspathInfo.PathKind.BOOT),
-                                controller.getClasspathInfo().getClassPath(ClasspathInfo.PathKind.COMPILE),
-                                controller.getClasspathInfo().getClassPath(ClasspathInfo.PathKind.SOURCE)));
                     }
                 }
             }
@@ -5005,17 +4999,16 @@ public final class JavaCompletionTask<T> extends BaseTask {
         }
         if (prefix == null || startsWith(env, "get") || startsWith(env, "set") || startsWith(env, "is")
                 || startsWith(env, prefix, "get") || startsWith(env, prefix, "set") || startsWith(env, prefix, "is")) {
-            CodeStyle codeStyle = CodeStyle.getDefault(controller.getDocument());
             for (VariableElement variableElement : ElementFilter.fieldsIn(controller.getElements().getAllMembers(te))) {
                 Name name = variableElement.getSimpleName();
                 if (!name.contentEquals(ERROR)) {
                     boolean isStatic = variableElement.getModifiers().contains(Modifier.STATIC);
-                    String setterName = CodeStyleUtils.computeSetterName(name, isStatic, codeStyle);
-                    String getterName = CodeStyleUtils.computeGetterName(name, variableElement.asType().getKind() == TypeKind.BOOLEAN, isStatic, codeStyle);
-                    if ((prefix == null || startsWith(env, getterName)) && !eu.hasGetter(te, variableElement, codeStyle)) {
+                    String setterName = CodeStyleUtils.computeSetterName(name, isStatic);
+                    String getterName = CodeStyleUtils.computeGetterName(name, variableElement.asType().getKind() == TypeKind.BOOLEAN, isStatic);
+                    if ((prefix == null || startsWith(env, getterName)) && !eu.hasGetter(te, variableElement)) {
                         results.add(itemFactory.createGetterSetterMethodItem(env.getController(), variableElement, asMemberOf(variableElement, clsType, types), anchorOffset, getterName, false));
                     }
-                    if ((prefix == null || startsWith(env, setterName)) && !(variableElement.getModifiers().contains(Modifier.FINAL) || eu.hasSetter(te, variableElement, codeStyle))) {
+                    if ((prefix == null || startsWith(env, setterName)) && !(variableElement.getModifiers().contains(Modifier.FINAL) || eu.hasSetter(te, variableElement))) {
                         results.add(itemFactory.createGetterSetterMethodItem(env.getController(), variableElement, asMemberOf(variableElement, clsType, types), anchorOffset, setterName, true));
                     }
                 }
